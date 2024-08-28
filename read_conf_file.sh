@@ -87,32 +87,11 @@ read_conf_file()
 
         for dkms_var in $dkms_vars; do 
 
-            #if [ "$k" = "$dkms_var" ] || [[ $k =~ ^$dkms_var\[[0-9]+\]$ ]]; then  
-            
-            #        eval "$k=$v"
-            
-            #fi
-
-            if [ "$k" = "$dkms_var" ]; then  
+            if [ "$k" = "$dkms_var" ] || [[ $k =~ ^$dkms_var\[[0-9]+\]$ ]]; then  
             
                     eval "$k=$v"
             
             fi
-
-            case "$k" in 
-
-                "${dkms_var}["*"]")
-                
-                             i=${k#"$dkms_var"[}
-                             i=${i%]}
-
-                             if [ $(( i )) -ge 0 ]; then 
-                            
-                                eval "$k=$v"
-
-                            fi
-                            ;;
-            esac
 
         done
 
