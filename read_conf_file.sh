@@ -69,15 +69,15 @@ safe_source() {
 
 read_conf_file()
 {
-    local  to_source_file="$1" prev_IFS="$IFS" dkms_var k v i
+    local  config_file="$1" prev_IFS="$IFS" allowed_dkms_directive conf_directive conf_directive_value directive directive_name directive_value
     shift
-    local dkms_vars="$*"
+    local allowed_dkms_directives="$*"
 
-    while IFS="=#" read -r k v; do 
+    while IFS="=#" read -r conf_directive conf_directive_value; do 
 
         # skip lines containing # (IFS splits on #)
 
-        if [ -z "$k" ]; then
+        if [ -z "$conf_directive" ]; then
 
             continue
 
@@ -85,17 +85,19 @@ read_conf_file()
 
         IFS=" "
 
-        for dkms_var in $dkms_vars; do 
+        # filter allowed directives
 
-            if [ "$k" = "$dkms_var" ] || [[ $k =~ ^$dkms_var\[[0-9]+\]$ ]]; then  
+        for allowed_dkms_directive in $allowed_dkms_directives; do 
+
+            if [ "$conf_directive" = "$allowed_dkms_directive" ] || [[ $conf_directive =~ ^$allowed_dkms_directive\[[0-9]+\]$ ]]; then  
             
-                    eval "$k=$v"
+                    eval "$conf_directive=$conf_directive_value"
             
             fi
 
         done
 
-    done < "$to_source_file"
+    done < "$config_file"
     
     IFS="$prev_IFS"
 
@@ -106,25 +108,25 @@ read_conf_file()
         echo "$directive_name=\"$directive_value\""
     done
 
-    [[ ${#REMAKE_INITRD[@]} -gt 0  ]]               && deprecated "REMAKE_INITRD ($to_source_file)"
-    [[ ${#MODULES_CONF[@]} -gt 0 ]]                 && deprecated "MODULES_CONF ($to_source_file)"
-    [[ ${#MODULES_CONF_OBSOLETES[@]} -gt 0 ]]       && deprecated "MODULES_CONF_OBSOLETES ($to_source_file)"
-    [[ ${#MODULES_CONF_ALIAS_TYPE[@]} -gt 0 ]]      && deprecated "MODULES_CONF_ALIAS_TYPE ($to_source_file)"
-    [[ ${#MODULES_CONF_OBSOLETE_ONLY[@]} -gt 0 ]]   && deprecated "MODULES_CONF_OBSOLETE_ONLY ($to_source_file)"
+    [[ ${#REMAKE_INITRD[@]} -gt 0  ]]               && deprecated "REMAKE_INITRD ($config_file)"
+    [[ ${#MODULES_CONF[@]} -gt 0 ]]                 && deprecated "MODULES_CONF ($config_file)"
+    [[ ${#MODULES_CONF_OBSOLETES[@]} -gt 0 ]]       && deprecated "MODULES_CONF_OBSOLETES ($config_file)"
+    [[ ${#MODULES_CONF_ALIAS_TYPE[@]} -gt 0 ]]      && deprecated "MODULES_CONF_ALIAS_TYPE ($config_file)"
+    [[ ${#MODULES_CONF_OBSOLETE_ONLY[@]} -gt 0 ]]   && deprecated "MODULES_CONF_OBSOLETE_ONLY ($config_file)"
 }
 
 print_conf()
 {
-    local f=$1 v value i k count
+    local f=$1 directive_value  directive i allowed_dkms_directive_size
     shift
     echo "file: $f"
 
-    for dkms_var in "$@"; do
+    for allowed_dkms_directive in "$@"; do
 
         # number of array elements for config variable
-        eval count=\$"{#${dkms_var}[@]}"
+        eval allowed_dkms_directive_size=\$"{#${allowed_dkms_directive}[@]}"
 
-        if [ "$count" -eq 0 ]; then 
+        if [ "$allowed_dkms_directive_size" -eq 0 ]; then 
 
             continue
         
@@ -132,12 +134,12 @@ print_conf()
 
         i=0
 
-        while [ $i -lt "$count" ]; do 
+        while [ $i -lt "$allowed_dkms_directive_size" ]; do 
 
-             k="${dkms_var}[$i]"
-             eval value=\$"{$k}"
-             i=$(( i + 1 ))
-             echo "$k=$value"
+            directive="${allowed_dkms_directive}[$i]"
+            eval directive_value=\$"{$directive}"
+            i=$(( i + 1 ))
+            echo "$directive=$directive_value"
         
         done
 
@@ -146,9 +148,9 @@ print_conf()
 
 clean_conf()
 {
-    local dkms_var
-    for dkms_var in $dkms_conf_variables; do
-        unset "$dkms_var"
+    local allowed_dkms_directive
+    for allowed_dkms_directive in $dkms_conf_variables; do
+        unset "$allowed_dkms_directive"
     done
 }
 
