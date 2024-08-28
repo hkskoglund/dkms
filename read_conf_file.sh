@@ -101,7 +101,7 @@ read_conf_file()
     
     IFS="$prev_IFS"
 
-    # handle DKMS_DIRECTIVE stuff specially. what is the syntax? DKMS_DIRECTIVE_module=1.2.3?
+    # handle DKMS_DIRECTIVE stuff specially. probably DKMS_DIRECTIVE=directive=value syntax
     for directive in $(set | grep ^DKMS_DIRECTIVE | cut -d = -f 2-3); do
         directive_name=${directive%%=*}
         directive_value=${directive#*=}
