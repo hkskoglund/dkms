@@ -68,45 +68,67 @@ safe_source() {
 }
 
 read_conf_file()
+# $1 config file, $2 allowed dkms directives
 {
-    local  config_file="$1" prev_IFS="$IFS" allowed_dkms_directive conf_directive conf_directive_value directive directive_name directive_value
+
+    # maintain backwards compability; does conf file contain anything other than =, #, or empty lines ? (conf file probably uses executable code to manipulate dkms_variables that must be sourced)
+
+    if grep --max-count=1 --invert-match --extended-regexp  "[#=]|^[[:space:]]*$" "$1"; then 
+        
+        safe_source "$1" "$2"
+        return $?
+
+    fi
+
+    local  config_file="$1" prev_IFS="$IFS" allowed_dkms_directive conf_directive conf_directive_value directive directive_name directive_value 
     shift
     local allowed_dkms_directives="$*"
 
     while IFS="=#" read -r conf_directive conf_directive_value; do 
 
-        # skip lines containing # (IFS splits on #)
+        case "$conf_directive" in 
 
-        if [ -z "$conf_directive" ]; then
+            "")
+                # skip lines containing # (IFS splits on #)
+                continue
+                ;;
 
-            continue
+            DKMS_DIRECTIVE=*=*)
 
-        fi
+                # for DKMS_DIRECTIVE=directive=value
+                # is this used? allows setting any variable
 
-        IFS=" "
+                # remove DKMS_DIRECTIVE=
+                directive=${conf_directive#DKMS_DIRECTIVE=}
+                directive_name=${directive%%=*}
+                directive_value="${directive#*=}"
+                eval "$directive_name=\"$directive_value\""
 
-        # filter allowed directives
+                ;;
 
-        for allowed_dkms_directive in $allowed_dkms_directives; do 
+            *)
 
-            if [ "$conf_directive" = "$allowed_dkms_directive" ] || [[ $conf_directive =~ ^$allowed_dkms_directive\[[0-9]+\]$ ]]; then  
-            
-                    eval "$conf_directive=$conf_directive_value"
-            
-            fi
+                IFS=" "
 
-        done
+                # filter allowed directives
+
+                for allowed_dkms_directive in $allowed_dkms_directives; do 
+
+                    if [ "$conf_directive" = "$allowed_dkms_directive" ] || [[ $conf_directive =~ ^$allowed_dkms_directive\[[0-9]+\]$ ]]; then  
+                    
+                            eval "$conf_directive=$conf_directive_value"
+                    
+                    fi
+
+                done
+
+                ;;
+
+        esac
 
     done < "$config_file"
     
     IFS="$prev_IFS"
-
-    # handle DKMS_DIRECTIVE stuff specially. probably DKMS_DIRECTIVE=directive=value syntax
-    for directive in $(set | grep ^DKMS_DIRECTIVE | cut -d = -f 2-3); do
-        directive_name=${directive%%=*}
-        directive_value=${directive#*=}
-        echo "$directive_name=\"$directive_value\""
-    done
 
     [[ ${#REMAKE_INITRD[@]} -gt 0  ]]               && deprecated "REMAKE_INITRD ($config_file)"
     [[ ${#MODULES_CONF[@]} -gt 0 ]]                 && deprecated "MODULES_CONF ($config_file)"
