@@ -71,20 +71,24 @@ read_conf_file()
 # $1 config file, $2 allowed dkms directives
 {
 
-    # maintain backwards compability; does conf file contain anything other than =, #, or empty lines ? (conf file probably uses executable code to manipulate dkms_variables that must be sourced)
-
-    if grep --max-count=1 --invert-match --extended-regexp  "[#=]|^[[:space:]]*$" "$1"; then 
-        
-        safe_source "$1" "$2"
-        return $?
-
-    fi
-
     local  config_file="$1" prev_IFS="$IFS" allowed_dkms_directive conf_directive conf_directive_value directive directive_name directive_value 
     shift
     local allowed_dkms_directives="$*"
 
+    # maintain backwards compability; does conf file contain anything other than =, #, or empty lines ? (conf file probably uses executable code to manipulate dkms_variables that must be sourced)
+    # grep expression from chatgpt query: grep, not match variable[index]=value, where index is a number and [index] is optional or not match comment lines with # or not match empty lines with spaces or newline
+
+    if grep --max-count=1 --invert-match --extended-regexp '^\s*$|^\s*#|^[a-zA-Z_][a-zA-Z0-9_]*(\[[0-9]*\])?=' "$config_file" >/dev/null; then 
+        
+        echo >&2 "running safe_source $config_file $allowed_dkms_directives"
+        safe_source "$config_file" $allowed_dkms_directives
+        return $?
+
+    fi
+
     while IFS="=#" read -r conf_directive conf_directive_value; do 
+
+       #echo >&2 "reading conf_directive: $conf_directive conf_directive_value: $conf_directive_value"
 
         case "$conf_directive" in 
 
@@ -141,7 +145,7 @@ print_conf()
 {
     local f=$1 directive_value  directive i allowed_dkms_directive_size
     shift
-    echo "file: $f"
+    #echo  >&2 "print_conf file: $f"
 
     for allowed_dkms_directive in "$@"; do
 
@@ -201,7 +205,7 @@ case "$1" in
         :
         ;;
 
-    *) echo >&2 "Usage: ./safe_source.sh safe_source | read_conf_file"
+    *) echo >&2 "Usage: ./read_conf_file.sh safe_source | read_conf_file [TESTDIR]"
        exit 1
        ;;
 
@@ -209,16 +213,21 @@ esac
 
 test_file=$(mktemp)
 # relative to dkms directory
-test_dir="./test"
+test_dir=${2:-"./test"}
+if [ "$test_dir" != "./test" ]; then 
+    maxdepth=1
+else
+   maxdepth=5
+fi
 
-if find "$test_dir" -name dkms.conf >"$test_file"; then 
+if find "$test_dir" -maxdepth $maxdepth -name "*.conf" >"$test_file"; then 
 
    :
 
 else
   
    exitcode=$?
-   echo >&2 "find ./test -name dkms.conf failed, exitcode: $exitcode"
+   echo >&2 "find $test_dir -name *.conf failed, exitcode: $exitcode"
    exit $exitcode
 
 fi
@@ -227,7 +236,7 @@ fi
 
 while read -r file;  do 
 
-    cat "$file"  
+    #cat "$file"  
     "$1" "$file" $dkms_conf_variables
     print_conf "$file" $dkms_conf_variables
     echo
