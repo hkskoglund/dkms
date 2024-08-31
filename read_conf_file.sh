@@ -81,6 +81,7 @@ read_conf_file()
     if grep --max-count=1 --invert-match --extended-regexp '^\s*$|^\s*#|^[a-zA-Z_][a-zA-Z0-9_]*(\[[0-9]*\])?=' "$config_file" >/dev/null; then 
         
         echo >&2 "running safe_source $config_file $allowed_dkms_directives"
+        # shellcheck disable=SC2086
         safe_source "$config_file" $allowed_dkms_directives
         return $?
 
