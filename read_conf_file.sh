@@ -73,14 +73,15 @@ read_conf_file()
 
     local  config_file="$1" prev_IFS="$IFS" allowed_dkms_directive conf_directive conf_directive_value directive directive_name directive_value 
     shift
-    local allowed_dkms_directives="$*"
+    local allowed_dkms_directives="$*" invert_match
 
     # maintain backwards compability; does conf file contain anything other than =, #, or empty lines ? (conf file probably uses executable code to manipulate dkms_variables that must be sourced)
-    # grep expression from chatgpt query: grep, not match variable[index]=value, where index is a number and [index] is optional or not match comment lines with # or not match empty lines with spaces or newline
+    # chatgpt was used to construct grep expression
 
-    if grep --max-count=1 --invert-match --extended-regexp '^\s*$|^\s*#|^[a-zA-Z_][a-zA-Z0-9_]*(\[[0-9]*\])?=' "$config_file" >/dev/null; then 
+    if invert_match=$(grep --extended-regexp --invert-match --max-count=1 \
+                            '^[[:space:]]*$|^[[:space:]]*#|^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*(\[[0-9]*\])?=|^[[:space:]]*DKMS_DIRECTIVE=[a-zA-Z_][a-zA-Z0-9_]*=.*$' "$config_file"); then 
         
-        echo >&2 "running safe_source $config_file $allowed_dkms_directives"
+        echo >&2 "invert_match: $invert_match      running safe_source $config_file $allowed_dkms_directives "
         # shellcheck disable=SC2086
         safe_source "$config_file" $allowed_dkms_directives
         return $?
@@ -98,18 +99,18 @@ read_conf_file()
                 continue
                 ;;
 
-            DKMS_DIRECTIVE=*=*)
+        #   DKMS_DIRECTIVE=*=*)
 
                 # for DKMS_DIRECTIVE=directive=value
                 # is this used? allows setting any variable
 
                 # remove DKMS_DIRECTIVE=
-                directive=${conf_directive#DKMS_DIRECTIVE=}
-                directive_name=${directive%%=*}
-                directive_value="${directive#*=}"
-                eval "$directive_name=\"$directive_value\""
+        #        directive=${conf_directive#DKMS_DIRECTIVE=}
+        #        directive_name=${directive%%=*}
+        #        directive_value="${directive#*=}"
+        #        eval "$directive_name=\"$directive_value\""
 
-                ;;
+        #        ;;
 
             *)
 
