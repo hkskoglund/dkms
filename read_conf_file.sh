@@ -145,6 +145,7 @@ read_conf_file()
 
 print_conf()
 {
+    # shellcheck disable=SC2034
     local f=$1 directive_value  directive i allowed_dkms_directive_size
     shift
     #echo  >&2 "print_conf file: $f"
@@ -165,9 +166,10 @@ print_conf()
         while [ $i -lt "$allowed_dkms_directive_size" ]; do 
 
             directive="${allowed_dkms_directive}[$i]"
-            eval directive_value=\$"{$directive}"
+            eval directive_val=\$"{$directive}"
             i=$(( i + 1 ))
-            echo "$directive=$directive_value"
+            # shellcheck disable=SC2154
+            echo "$directive=$directive_val"
         
         done
 
