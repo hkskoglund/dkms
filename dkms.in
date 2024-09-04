@@ -20,7 +20,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-# shellcheck  disable=SC1090 disable=SC2153
+# shellcheck disable=SC2128 disable=SC2153
 
 shopt -s extglob
 
@@ -370,6 +370,7 @@ distro_version()
     for f in /etc/os-release /usr/lib/os-release; do
         if [[ -e $f ]]; then
             (
+                # shellcheck source=/dev/null
                 . "$f"
                 if [[ "$ID" = "ubuntu" ]]; then
                     # ID_LIKE=debian in ubuntu
@@ -430,6 +431,7 @@ safe_source() {
     local tmpfile
     tmpfile=$(mktemp_or_die)
     ( exec >"$tmpfile"
+    # shellcheck source=/dev/null
     . "$to_source_file" >/dev/null
     # This is really ugly, but a neat hack
     # Remember, in bash 2.0 and greater all variables are really arrays.
@@ -446,6 +448,7 @@ safe_source() {
         echo "$directive_name=\"$directive_value\""
     done
     )
+    # shellcheck source=/dev/null
     . "$tmpfile"
     rm "$tmpfile"
 
@@ -1590,7 +1593,8 @@ do_uninstall()
             else
                 echo $"Module was not found within $install_tree/$1/"
             fi
-            local origmod=$(compressed_or_uncompressed "$dkms_tree/$module/original_module/$1/$2" "${dest_module_name[$count]}")
+            local origmod
+            origmod=$(compressed_or_uncompressed "$dkms_tree/$module/original_module/$1/$2" "${dest_module_name[$count]}")
             if [[ -n $origmod ]]; then
                 echo $"Restoring archived original module"
                 mkdir -p "$install_tree/$1${DEST_MODULE_LOCATION[$count]}/"
