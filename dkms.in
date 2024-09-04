@@ -750,7 +750,7 @@ check_version_sanity()
     # $3 = obs by kernel version
     # $4 = dest_module_name
 
-    local lib_tree="$install_tree/$1" res=
+    local lib_tree="$install_tree/$1"
     local i=0
     if [[ -n $3 ]]; then
         # Magic split into array syntax saves trivial awk and cut calls.
