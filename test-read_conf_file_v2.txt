@@ -94,9 +94,18 @@ BUILT_MODULE_NAME[0]=dkms_test
 DEST_MODULE_LOCATION[0]=/kernel/extra
 AUTOINSTALL[0]=yes
 
+mok_signing_key[0]=/tmp/dkms_test_private_key
+mok_certificate[0]=/no/such/path.crt
+
+mok_signing_key[0]=/no/such/path.key
+
+sign_file[0]=/no/such/file
 
 
+mok_signing_key[0]=/tmp/dkms_test_private_key
+mok_certificate[0]=/tmp/dkms_test_certificate
 
-
-
+sign_file[0]=/lib/modules//build/scripts/sign-file
+mok_signing_key[0]=/tmp/dkms_test_dir_/key
+mok_certificate[0]=/tmp/dkms_test_dir_/cert
 

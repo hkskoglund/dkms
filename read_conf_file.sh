@@ -1,5 +1,32 @@
 #!/bin/bash
 
+shopt -s extglob
+
+# All of the variables we will accept from dkms.conf.
+# Does not include directives
+# The last group of variables has been deprecated
+readonly dkms_conf_variables="CLEAN PACKAGE_NAME
+   PACKAGE_VERSION POST_ADD POST_BUILD POST_INSTALL POST_REMOVE PRE_BUILD
+   PRE_INSTALL BUILD_DEPENDS BUILD_EXCLUSIVE_ARCH BUILD_EXCLUSIVE_CONFIG
+   BUILD_EXCLUSIVE_KERNEL BUILD_EXCLUSIVE_KERNEL_MIN BUILD_EXCLUSIVE_KERNEL_MAX
+   build_exclude OBSOLETE_BY MAKE MAKE_MATCH
+   PATCH PATCH_MATCH patch_array BUILT_MODULE_NAME
+   built_module_name BUILT_MODULE_LOCATION built_module_location
+   DEST_MODULE_NAME dest_module_name
+   DEST_MODULE_LOCATION dest_module_location
+   STRIP strip AUTOINSTALL NO_WEAK_MODULES
+   SIGN_FILE MOK_SIGNING_KEY MOK_CERTIFICATE
+
+   REMAKE_INITRD MODULES_CONF MODULES_CONF_OBSOLETES
+   MODULES_CONF_ALIAS_TYPE MODULES_CONF_OBSOLETE_ONLY"
+
+# All of the variables not related to signing we will accept from framework.conf.
+readonly dkms_framework_nonsigning_variables="source_tree dkms_tree install_tree tmp_location
+   verbose symlink_modules autoinstall_all_kernels
+   modprobe_on_install parallel_jobs"
+# All of the signing related variables we will accept from framework.conf.
+readonly dkms_framework_signing_variables="sign_file mok_signing_key mok_certificate"
+
 die_is_fatal="yes"
 
 error() (
@@ -143,12 +170,70 @@ read_conf_file()
     [[ ${#MODULES_CONF_OBSOLETE_ONLY[@]} -gt 0 ]]   && deprecated "MODULES_CONF_OBSOLETE_ONLY ($config_file)"
 }
 
+read_conf_file_v2()
+# $1 config file $2 directives
+{
+     local  config_file="$1" prev_IFS="$IFS" conf_directive conf_directive_value directive directive_name directive_value directive_found
+     shift
+     local allowed_dkms_directives="$*"
+
+     printf >&2 "\n%s\n\n" "read_conf_file_v2"
+
+    # shellcheck disable=SC2094
+    
+     while IFS="=#" read -r conf_directive conf_directive_value; do 
+
+        echo >&2 "reading conf_directive: $conf_directive conf_directive_value: $conf_directive_value"
+
+        if [ -z "$conf_directive" ]; then 
+
+            # skip lines containing # (IFS splits on #)
+            continue
+
+        fi
+
+        IFS="$prev_IFS"
+        directive_found="false"
+
+        for directive in $allowed_dkms_directives; do
+
+            if [ "$conf_directive" = "$directive" ] || [[ $conf_directive =~ ^$directive\[[0-9]+\]$ ]]; then  
+            
+                    eval "$conf_directive=$conf_directive_value"
+                    directive_found="true"
+                    break
+            
+            fi
+
+        done
+
+        if [ $directive_found = false ]; then
+
+            echo >&2 "warn: $conf_directive, using safe_source"
+            # shellcheck disable=SC2086
+            safe_source "$config_file" $allowed_dkms_directives
+            return $?
+
+        fi
+
+    done < "$config_file"
+    
+    IFS="$prev_IFS"
+
+    [[ ${#REMAKE_INITRD[@]} -gt 0  ]]               && deprecated "REMAKE_INITRD ($config_file)"
+    [[ ${#MODULES_CONF[@]} -gt 0 ]]                 && deprecated "MODULES_CONF ($config_file)"
+    [[ ${#MODULES_CONF_OBSOLETES[@]} -gt 0 ]]       && deprecated "MODULES_CONF_OBSOLETES ($config_file)"
+    [[ ${#MODULES_CONF_ALIAS_TYPE[@]} -gt 0 ]]      && deprecated "MODULES_CONF_ALIAS_TYPE ($config_file)"
+    [[ ${#MODULES_CONF_OBSOLETE_ONLY[@]} -gt 0 ]]   && deprecated "MODULES_CONF_OBSOLETE_ONLY ($config_file)"
+
+}
+
 print_conf()
 {
     # shellcheck disable=SC2034
     local f=$1 directive_value  directive i allowed_dkms_directive_size
     shift
-    #echo  >&2 "print_conf file: $f"
+    printf >&2 "\n%s\n\n" "print_conf file: $f"
 
     for allowed_dkms_directive in "$@"; do
 
@@ -178,36 +263,23 @@ print_conf()
 
 clean_conf()
 {
-    local allowed_dkms_directive
-    for allowed_dkms_directive in $dkms_conf_variables; do
-        unset "$allowed_dkms_directive"
+    local directive
+    # shellcheck disable=SC2068
+    for directive in $@; do
+        unset "$directive"
     done
 }
 
-readonly dkms_conf_variables="CLEAN PACKAGE_NAME
-   PACKAGE_VERSION POST_ADD POST_BUILD POST_INSTALL POST_REMOVE PRE_BUILD
-   PRE_INSTALL BUILD_DEPENDS BUILD_EXCLUSIVE_ARCH BUILD_EXCLUSIVE_CONFIG
-   BUILD_EXCLUSIVE_KERNEL BUILD_EXCLUSIVE_KERNEL_MIN BUILD_EXCLUSIVE_KERNEL_MAX
-   build_exclude OBSOLETE_BY MAKE MAKE_MATCH
-   PATCH PATCH_MATCH patch_array BUILT_MODULE_NAME
-   built_module_name BUILT_MODULE_LOCATION built_module_location
-   DEST_MODULE_NAME dest_module_name
-   DEST_MODULE_LOCATION dest_module_location
-   STRIP strip AUTOINSTALL NO_WEAK_MODULES
-   SIGN_FILE MOK_SIGNING_KEY MOK_CERTIFICATE
-
-   REMAKE_INITRD MODULES_CONF MODULES_CONF_OBSOLETES
-   MODULES_CONF_ALIAS_TYPE MODULES_CONF_OBSOLETE_ONLY"
 
 
 case "$1" in
 
-  "safe_source" | "read_conf_file")
+  "safe_source" | "read_conf_file" | "read_conf_file_v2")
 
         :
         ;;
 
-    *) echo >&2 "Usage: ./read_conf_file.sh safe_source | read_conf_file [TESTDIR]"
+    *) echo >&2 "Usage: $0 safe_source | read_conf_file | read_conf_file_v2 [TESTDIR]"
        exit 1
        ;;
 
@@ -238,11 +310,12 @@ fi
 
 while read -r file;  do 
 
-    #cat "$file"  
-    "$1" "$file" $dkms_conf_variables
-    print_conf "$file" $dkms_conf_variables
+    printf >&2 "\n===========================================================\n%s\n\n" "cat conf file: $file"
+    cat >&2 "$file"  
+    "$1" "$file" $dkms_conf_variables $dkms_framework_nonsigning_variables $dkms_framework_signing_variables
+    print_conf "$file" $dkms_conf_variables $dkms_framework_nonsigning_variables $dkms_framework_signing_variables
     echo
-    clean_conf
+    clean_conf $dkms_conf_variables $dkms_framework_nonsigning_variables $dkms_framework_signing_variables
 
 done < "$test_file"
 
