@@ -20,7 +20,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-# shellcheck  disable=SC2128 disable=SC1090 disable=SC2153
+# shellcheck  disable=SC1090 disable=SC2153
 
 shopt -s extglob
 
@@ -1211,6 +1211,7 @@ do_build()
     set_kernel_source_dir_and_kconfig "$kernelver"
     prepare_kernel "$kernelver" "$arch"
     # Lazy source in signing related configuration
+    # shellcheck disable=SC2086
     read_framework_conf $dkms_framework_signing_variables
     prepare_signing
     prepare_build
@@ -1347,7 +1348,7 @@ do_install()
 
         # Copy module to its location
         echo $"Installing $install_tree/$kernelver${dest_module_location[$count]}/${dest_module_name[$count]}$module_suffix"
-        mkdir -p $install_tree/$kernelver${dest_module_location[$count]}
+        mkdir -p "$install_tree/$kernelver${dest_module_location[$count]}"
         [[ $symlink_modules ]] && symlink="-s"
         local toinstall=$(compressed_or_uncompressed "$base_dir/module" "$m")
         # shellcheck disable=SC2086
@@ -1576,7 +1577,7 @@ do_uninstall()
 
         echo $""
         for ((count=0; count < ${#built_module_name[@]}; count++)); do
-            real_dest_module_location="$(find_actual_dest_module_location $module $count $1 $2)"
+            real_dest_module_location="$(find_actual_dest_module_location "$module" "$count" "$1" "$2")"
 
             if [[ ${real_dest_module_location} ]]; then
                 echo $"Deleting $install_tree/$1${real_dest_module_location}/${dest_module_name[$count]}$module_suffix"
@@ -2689,6 +2690,7 @@ ldtarball) # Make sure they're root if we're using --force
     load_tarball && add_module
     ;;
 generate_mok)
+    # shellcheck disable=SC2086
     read_framework_conf $dkms_framework_signing_variables
     prepare_mok
     ;;
