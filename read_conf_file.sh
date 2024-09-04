@@ -197,7 +197,7 @@ read_conf_file_v2()
 
         for directive in $allowed_dkms_directives; do
 
-            if [ "$conf_directive" = "$directive" ] || [[ $conf_directive =~ ^$directive\[[0-9]+\]$ ]]; then  
+            if [[ $conf_directive =~ ^$directive($|\[[0-9]+\])$ ]]; then
             
                     eval "$conf_directive=$conf_directive_value"
                     directive_found="true"
