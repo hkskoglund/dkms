@@ -227,7 +227,6 @@ read_conf_file_v2()
 
                                 esac
 
-
                     esac
 
                     # -g make it global, otherwise local to function
