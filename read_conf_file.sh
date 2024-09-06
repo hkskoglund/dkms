@@ -199,7 +199,39 @@ read_conf_file_v2()
 
             if [[ $conf_directive == "$directive" || $conf_directive =~ ^$directive\[[0-9]+\]$ ]]; then
             
-                    eval "$conf_directive=$conf_directive_value"
+                    conf_directive_value=${conf_directive_value#\"} # leading qoute if any
+                    conf_directive_value=${conf_directive_value%\"} # trailing qoute if any
+                    
+                    case "$conf_directive_value" in
+                        # command substitution
+                       *\$\(*\)) 
+                                 echo >&2 "warn: $conf_directive, using safe_source due to command substitution in conf_directive_value: $conf_directive_value"
+                                # shellcheck disable=SC2086
+                                 safe_source "$config_file" $allowed_dkms_directives
+                                 return $?
+                                ;;
+                            
+                    esac
+
+
+                    case "$conf_directive_value" in
+
+                        *\$\{kernelver\}*) 
+                                            conf_directive_value="${conf_directive_value/\$\{kernelver\}/"$kernelver"}"
+                                            ;;
+                       *\$kernelver*) 
+                                            conf_directive_value="${conf_directive_value/\$kernelver/"$kernelver"}"
+                                            ;;
+
+                    esac
+
+                    # -g make it global, otherwise local to function
+                    declare -a -g "$conf_directive=$conf_directive_value"
+                    # must use eval for ${kernelver} expansion
+                    #conf_directive_evalue="$(eval echo "$conf_directive_value)"
+                    # use \" to not split on space -> MAKE="make all" -> MAKE=make all -> command not found
+                    #eval "$conf_directive=\"$conf_directive_value\""
+                    
                     directive_found="true"
                     break
             
@@ -233,7 +265,7 @@ print_conf()
     # shellcheck disable=SC2034
     local f=$1 directive_value  directive i allowed_dkms_directive_size
     shift
-    printf >&2 "\n%s\n\n" "print_conf file: $f"
+    printf >&2 "\n%s\n\n" "print_conf file: $f $*"
 
     for allowed_dkms_directive in "$@"; do
 

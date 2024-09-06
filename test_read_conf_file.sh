@@ -10,7 +10,7 @@ test_func()
 }
 
 test_func safe_source
-test_func read_conf_file
+test_func read_conf_file_v2
 
 echo 
-diff --report-identical-files  "result_safe_source.txt" "result_read_conf_file.txt"
+diff --report-identical-files  "result_safe_source.txt" "result_read_conf_file_v2.txt"
