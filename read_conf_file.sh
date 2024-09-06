@@ -210,27 +210,25 @@ read_conf_file_v2()
                                  safe_source "$config_file" $allowed_dkms_directives
                                  return $?
                                 ;;
-                            
+
+                        mok_signing_key | mok_certificate | sign_file) 
+
+                                case "$conf_directive_value" in
+
+                                    *\$\{kernelver\}*) 
+                                                        conf_directive_value="${conf_directive_value/\$\{kernelver\}/"$kernelver"}"
+                                                        ;;
+
+                                esac
+
+                                # -g make it global, otherwise local to function
+                                declare -a -g "$conf_directive=$conf_directive_value"
+                                # must use eval for ${kernelver} expansion
+                                #conf_directive_evalue="$(eval echo "$conf_directive_value)"
+                                # use \" to not split on space -> MAKE="make all" -> MAKE=make all -> command not found
+                                #eval "$conf_directive=\"$conf_directive_value\""
+                                        
                     esac
-
-
-                    case "$conf_directive_value" in
-
-                        *\$\{kernelver\}*) 
-                                            conf_directive_value="${conf_directive_value/\$\{kernelver\}/"$kernelver"}"
-                                            ;;
-                       *\$kernelver*) 
-                                            conf_directive_value="${conf_directive_value/\$kernelver/"$kernelver"}"
-                                            ;;
-
-                    esac
-
-                    # -g make it global, otherwise local to function
-                    declare -a -g "$conf_directive=$conf_directive_value"
-                    # must use eval for ${kernelver} expansion
-                    #conf_directive_evalue="$(eval echo "$conf_directive_value)"
-                    # use \" to not split on space -> MAKE="make all" -> MAKE=make all -> command not found
-                    #eval "$conf_directive=\"$conf_directive_value\""
                     
                     directive_found="true"
                     break
