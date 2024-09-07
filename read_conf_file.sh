@@ -192,6 +192,17 @@ read_conf_file_v2()
 
         fi
 
+        # fallback early to safe_source, if not a valid variable on the form variable or variable[index] 
+
+        if [[ ! "$conf_directive" =~ ^[A-Za-z_][A-Za-z0-9_]*([[0-9]+\])?$ ]]; then
+
+            echo >&2 "warn: using safe_source conf_directive: $conf_directive conf_directive_value: $conf_directive_value"
+            # shellcheck disable=SC2086
+            safe_source "$config_file" $allowed_dkms_directives
+            return $?
+
+        fi
+
         IFS="$prev_IFS"
         directive_found="false"
 
@@ -203,32 +214,25 @@ read_conf_file_v2()
                     conf_directive_value=${conf_directive_value%\"} # trailing qoute if any
                     
                     case "$conf_directive_value" in
-                        # command substitution
+
+                        *\$\{kernelver\}*) 
+                                            conf_directive_value="${conf_directive_value/\$\{kernelver\}/"$kernelver"}"
+                                            ;;
+
+                        *\$\{kernel_source_dir\}*)
+                                            conf_directive_value="${conf_directive_value/\$\{kernel_source_dir\}/"$kernel_source_dir"}"
+                                            ;;
+
+                        # command substitution/arithmetic expansion
                        *\$\(*\)) 
-                                 echo >&2 "warn: $conf_directive, using safe_source due to command substitution in conf_directive_value: $conf_directive_value"
+                                 echo >&2 "warn: using safe_source conf_directive: $conf_directive conf_directive_value: $conf_directive_value"
                                 # shellcheck disable=SC2086
                                  safe_source "$config_file" $allowed_dkms_directives
                                  return $?
                                 ;;
-
-                        
                                         
                     esac
-
-                    case "$conf_directive" in 
-
-                        mok_signing_key | mok_certificate | sign_file) 
-
-                                case "$conf_directive_value" in
-
-                                    *\$\{kernelver\}*) 
-                                                        conf_directive_value="${conf_directive_value/\$\{kernelver\}/"$kernelver"}"
-                                                        ;;
-
-                                esac
-
-                    esac
-
+                   
                     # -g make it global, otherwise local to function
                     declare -a -g "$conf_directive=$conf_directive_value"
                     # must use eval for ${kernelver} expansion
@@ -243,7 +247,7 @@ read_conf_file_v2()
 
         done
 
-        if [ $directive_found = false ]; then
+        if [[ $directive_found == false ]]; then
 
             echo >&2 "warn: $conf_directive, using safe_source"
             # shellcheck disable=SC2086
