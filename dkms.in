@@ -101,8 +101,12 @@ invoke_command()
             while /bin/kill --signal 0 $pid > /dev/null 2>&1; do
                 sleep 3 &
                 wait $!
-                # echo interferes with ./run_test.sh expected ..., if depmod takes longer than 3 sec -> .... are printed
-                #echo -en "."
+                case $package_name in
+                  dkms*_test) : # ignore . printing for test packages -> will intefere with expected 3 ... for run_test.sh if command takes longer than 3 seconds in the background 
+                                ;;
+                  *)            echo -en "." 
+                                ;;
+                esac
             done
         } & progresspid=$!
         wait $pid 2>/dev/null
