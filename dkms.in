@@ -315,9 +315,16 @@ setup_kernels_arches()
             grep -v "not owned by any package" | grep kernel | head -n 1)
             if ! archs[0]=$(rpm -q --queryformat "%{ARCH}" "$kernelver_rpm" 2>/dev/null); then
                 archs[0]=$(uname -m)
-                # shellcheck disable=SC2010
-                if [[ ${archs[0]} = x86_64 ]] && grep -q Intel /proc/cpuinfo && ls "$install_tree/$kernelver/build/configs" 2>/dev/null | grep -q "ia32e"; then
-                    archs[0]="ia32e"
+                if [[ ${archs[0]} = x86_64 ]] && grep -q Intel /proc/cpuinfo; then 
+                  local config
+                  for config in "$install_tree/$kernelver/build/configs"/*; do 
+                    case "$config" in
+                      *ia32e*)             
+                                archs[0]="ia32e"
+                                break
+                                ;;
+                    esac
+                  done
                 fi
             fi
         fi
