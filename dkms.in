@@ -491,9 +491,7 @@ read_conf()
     local read_conf_file="$dkms_tree/$module/$module_version/source/dkms.conf"
 
     # Set variables supported in dkms.conf files (eg. $kernelver)
-    # shellcheck disable=SC2178
     local kernelver="$1"
-    # shellcheck disable=SC2178
     local arch="$2"
     set_kernel_source_dir_and_kconfig "$1"
 
