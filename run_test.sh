@@ -188,12 +188,12 @@ generalize_expected_output() {
     sed -i '/^At main.c:/d' "$output_log"
     sed -i '/^- SSL error:/d' "$output_log"
     # Apport related error that can occur in the CI. Drop from the output to be more generic
-    sed -i "/^python3: can't open file '\/usr\/share\/apport\/package-hooks\/dkms_packages.py'\: \[Errno 2\] No such file or directory$/d" ${output_log}
-    sed -i "/^ERROR (dkms apport): /d" ${output_log}
+    sed -i "/^python3: can't open file '\/usr\/share\/apport\/package-hooks\/dkms_packages.py'\: \[Errno 2\] No such file or directory$/d" "$output_log"
+    sed -i "/^ERROR (dkms apport): /d" "$output_log"
     # Drop empty lines
-    sed -i "/^$/d" ${output_log}
+    sed -i "/^$/d" "$output_log"
     # Gentoo complains there is not a .comment section in the built modules
-    sed -i "/^readelf\: Warning: Section '.comment' was not dumped because it does not exist$/d" ${output_log}
+    sed -i "/^readelf\: Warning: Section '.comment' was not dumped because it does not exist$/d" "$output_log"
     # Swap any CC/LD/... flags (if set) with a placeholder message
     sed -i "s|\(make -j1 KERNELRELEASE=${KERNEL_VER} all\).*|\1 <omitting possibly set CC/LD/... flags>|" "$output_log"
 }
@@ -772,7 +772,6 @@ abspwd=$(readlink -f "$(pwd)")
 
 echo 'Testing dkms add of source tree without dkms.conf (expected error)'
 run_with_expected_error 1 dkms add "$abspwd"/test/dkms_conf_test_no_conf << EOF
-
 Error! Arguments <module> and <module-version> are not specified.
 Usage: add <module>/<module-version> or
        add -m <module>/<module-version> or
