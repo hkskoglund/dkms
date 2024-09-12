@@ -62,7 +62,7 @@ TEST_TMPFILES=(
 # Reportedly in some cases the entries in the modinfo output are ordered
 # differently. Fetch whatever we need and sort them.
 modinfo_quad() {
-    modinfo $1 | grep -E "^description:|^filename:|^license:|^version:" | sort
+    modinfo "$1" | grep -E "^description:|^filename:|^license:|^version:" | sort
 }
 
 SIGNING_MESSAGE=""
@@ -83,10 +83,10 @@ dkms_status_grep_dkms_module() {
 clean_dkms_env() {
     local found_module
 
-    for module in ${TEST_MODULES[@]}; do
-        found_module="$(dkms_status_grep_dkms_module ${module})"
+    for module in "${TEST_MODULES[@]}"; do
+        found_module="$(dkms_status_grep_dkms_module "${module}")"
         if [[ -n "$found_module" ]] ; then
-            dkms remove ${module}/1.0 >/dev/null
+            dkms remove "${module}"/1.0 >/dev/null
         fi
         rm -rf "/var/lib/dkms/${module}/"
         rm -f "/lib/modules/${KERNEL_VER}/${expected_dest_loc}/${module}.ko${mod_compression_ext}"
@@ -102,8 +102,8 @@ clean_dkms_env() {
 check_no_dkms_test() {
     local found_module
 
-    for module in ${TEST_MODULES[@]}; do
-        found_module="$(dkms_status_grep_dkms_module ${module})"
+    for module in "${TEST_MODULES[@]}"; do
+        found_module="$(dkms_status_grep_dkms_module "${module}")"
         if [[ -n "$found_module" ]] ; then
             echo >&2 "Error: module ${module} is still in DKMS tree"
             exit 1
@@ -132,12 +132,13 @@ check_no_dkms_test() {
 }
 
 cert_serial() {
-    local ver="$(openssl version)"
+    local ver
+    ver="$(openssl version)"
     # Some systems in CI test are still using ancient versions of openssl program.
     if [[ "$ver" = "OpenSSL 1.0."* ]] || [[ "$ver" = "OpenSSL 0."* ]]; then
-        openssl x509 -text -inform DER -in "$1" -noout | grep -A 1 'X509v3 Subject Key Identifier' | tail -n 1 | tr 'a-z' 'A-Z' | tr -d ' :'
+        openssl x509 -text -inform DER -in "$1" -noout | grep -A 1 'X509v3 Subject Key Identifier' | tail -n 1 | tr '[:lower:]' '[:upper:]' | tr -d ' :'
     else
-        openssl x509 -serial -inform DER -in "$1" -noout | tr 'a-z' 'A-Z' | sed 's/^SERIAL=//'
+        openssl x509 -serial -inform DER -in "$1" -noout | tr  '[:lower:]' '[:upper:]' | sed 's/^SERIAL=//'
     fi
 }
 
@@ -163,35 +164,35 @@ run_status_with_expected_output() {
 }
 
 generalize_expected_output() {
-    local output_log=$1
+    local output_log="$1"
 
     # On CentOS, weak-modules is executed. Drop it from the output, to be more generic
-    sed -i '/^Adding any weak-modules$/d' ${output_log}
-    sed -i '/^Removing any linked weak-modules$/d' ${output_log}
+    sed -i '/^Adding any weak-modules$/d' "$output_log"
+    sed -i '/^Removing any linked weak-modules$/d' "$output_log"
     # Signing related output. Drop it from the output, to be more generic
     if (( NO_SIGNING_TOOL == 0 )); then
-        sed -i '/^EFI variables are not supported on this system/d' ${output_log}
-        sed -i '/^\/sys\/firmware\/efi\/efivars not found, aborting./d' ${output_log}
-        sed -i '/^Sign command:/d' ${output_log}
-        sed -i '/^Signing key:/d' ${output_log}
-        sed -i '/^Public certificate (MOK):/d' ${output_log}
-        sed -i '/^Certificate or key are missing, generating them using update-secureboot-policy...$/d' ${output_log}
-        sed -i '/^Certificate or key are missing, generating self signed certificate for MOK...$/d' ${output_log}
+        sed -i '/^EFI variables are not supported on this system/d' "$output_log"
+        sed -i '/^\/sys\/firmware\/efi\/efivars not found, aborting./d' "$output_log"
+        sed -i '/^Sign command:/d' "$output_log"
+        sed -i '/^Signing key:/d' "$output_log"
+        sed -i '/^Public certificate (MOK):/d' "$output_log"
+        sed -i '/^Certificate or key are missing, generating them using update-secureboot-policy...$/d' "$output_log"
+        sed -i '/^Certificate or key are missing, generating self signed certificate for MOK...$/d' "$output_log"
     else
-        sed -i "/^The kernel is built without module signing facility, modules won't be signed$/d" ${output_log}
-        sed -i "/^Binary .* not found, modules won't be signed$/d" ${output_log}
+        sed -i "/^The kernel is built without module signing facility, modules won't be signed$/d" "$output_log"
+        sed -i "/^Binary .* not found, modules won't be signed$/d" "$output_log"
         # Uncomment the following line to run this script with --no-signing-tool on platforms where the sign-file tool exists
-        # sed -i '/^Signing module \/var\/lib\/dkms\/dkms_test\/1.0\/build\/dkms_test.ko$/d' ${output_log}
+        # sed -i '/^Signing module \/var\/lib\/dkms\/dkms_test\/1.0\/build\/dkms_test.ko$/d' $output_log
     fi
     # OpenSSL non-critical errors while signing. Remove them to be more generic
-    sed -i '/^At main.c:/d' ${output_log}
-    sed -i '/^- SSL error:/d' ${output_log}
+    sed -i '/^At main.c:/d' "$output_log"
+    sed -i '/^- SSL error:/d' "$output_log"
     # Apport related error that can occur in the CI. Drop from the output to be more generic
-    sed -i "/^python3: can't open file '\/usr\/share\/apport\/package-hooks\/dkms_packages.py'\: \[Errno 2\] No such file or directory$/d" ${output_log}
-    sed -i "/^ERROR (dkms apport): /d" ${output_log}
+    sed -i "/^python3: can't open file '\/usr\/share\/apport\/package-hooks\/dkms_packages.py'\: \[Errno 2\] No such file or directory$/d" "$output_log"
+    sed -i "/^ERROR (dkms apport): /d" "$output_log"
 
     # Swap any CC/LD/... flags (if set) with a placeholder message
-    sed -i "s|\(make -j1 KERNELRELEASE=${KERNEL_VER} all\).*|\1 <omitting possibly set CC/LD/... flags>|" ${output_log}
+    sed -i "s|\(make -j1 KERNELRELEASE=${KERNEL_VER} all\).*|\1 <omitting possibly set CC/LD/... flags>|" "$output_log"
 }
 
 run_with_expected_output() {
@@ -207,20 +208,20 @@ run_with_expected_error() {
 
     shift
     cat > ${expected_output_log}
-    stdbuf -o L -e L "$@" > ${output_log} 2>&1 || error_code=$?
+    stdbuf -o L -e L "$@" > $output_log 2>&1 || error_code=$?
     if [[ "${error_code}" != "${expected_error_code}" ]] ; then
         echo "Error: command '$*' returned status ${error_code} instead of expected ${expected_error_code}"
-        cat ${output_log}
-        rm ${expected_output_log} ${output_log}
+        cat $output_log
+        rm ${expected_output_log} $output_log
         return 1
     fi
-    generalize_expected_output ${output_log} ${dkms_command}
-    if ! diff -U3 ${expected_output_log} ${output_log} ; then
+    generalize_expected_output $output_log "$dkms_command"
+    if ! diff -U3 ${expected_output_log} $output_log ; then
         echo >&2 "Error: unexpected output from: $*"
-        rm ${expected_output_log} ${output_log}
+        rm ${expected_output_log} $output_log
         return 1
     fi
-    rm ${expected_output_log} ${output_log}
+    rm ${expected_output_log} $output_log
 }
 
 # sig_hashalgo itself may show bogus value if kmod version < 26
@@ -799,10 +800,10 @@ check_no_dkms_test
 ### Testing malformed/borderline dkms.conf                               ###
 ############################################################################
 
-abspwd=$(readlink -f $(pwd))
+abspwd=$(readlink -f "$(pwd)")
 
 echo 'Testing dkms add of source tree without dkms.conf (expected error)'
-run_with_expected_error 1 dkms add ${abspwd}/test/dkms_conf_test_no_conf << EOF
+run_with_expected_error 1 dkms add "$abspwd"/test/dkms_conf_test_no_conf << EOF
 
 Error! Arguments <module> and <module-version> are not specified.
 Usage: add <module>/<module-version> or
