@@ -215,8 +215,16 @@ read_conf_file_v2()
                     
                     case "$conf_directive_value" in
 
+                        *\$kernelver*)
+                                            conf_directive_value="${conf_directive_value/\$kernelver/"$kernelver"}"
+                                            ;;
+
                         *\$\{kernelver\}*) 
                                             conf_directive_value="${conf_directive_value/\$\{kernelver\}/"$kernelver"}"
+                                            ;;
+
+                        *\$kernel_source_dir*)
+                                            conf_directive_value="${conf_directive_value/\$kernel_source_dir/"$kernel_source_dir"}"
                                             ;;
 
                         *\$\{kernel_source_dir\}*)
