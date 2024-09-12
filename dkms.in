@@ -1385,7 +1385,7 @@ do_install()
     if [[ -z $NO_WEAK_MODULES ]]; then
         if [[ ${weak_modules} ]]; then
             echo "Adding any weak-modules"
-            list_each_installed_module "$module" "$kernelver" "$arch" | ${weak_modules} ${weak_modules_no_initrd} --add-modules
+            list_each_installed_module "$module" "$kernelver" "$arch" | ${weak_modules} "${weak_modules_no_initrd}" --add-modules
         fi
     fi
 
@@ -1586,7 +1586,7 @@ do_uninstall()
         if [[ -z $NO_WEAK_MODULES ]]; then
             if [[ ${weak_modules} ]] && (module_status_built "$module" "$module_version" |grep -q "installed"); then
                 echo "Removing any linked weak-modules"
-                list_each_installed_module "$module" "$1" "$2" | ${weak_modules} ${weak_modules_no_initrd} --remove-modules
+                list_each_installed_module "$module" "$1" "$2" | ${weak_modules} "${weak_modules_no_initrd}" --remove-modules
             fi
         fi
 
@@ -1709,10 +1709,10 @@ remove_module()
         time_stamp=$(ps -o lstart --no-headers -p "$pppid" 2>/dev/null)
         for lock_file in "$tmp_location/dkms_rpm_safe_upgrade_lock.$pppid".*; do
             [[ -f $lock_file ]] || continue
-            lock_head=$(head -n 1 $lock_file 2>/dev/null)
-            lock_tail=$(tail -n 1 $lock_file 2>/dev/null)
-            [[ $lock_head = $module-$module_version && $time_stamp && $lock_tail = $time_stamp ]] || continue
-            rm -f $lock_file
+            lock_head=$(head -n 1 "$lock_file" 2>/dev/null)
+            lock_tail=$(tail -n 1 "$lock_file" 2>/dev/null)
+            [[ $lock_head = $module-$module_version && $time_stamp && $lock_tail = "$time_stamp" ]] || continue
+            rm -f "$lock_file"
             die 0 "Remove cancelled because --rpm_safe_upgrade scenario detected."
         done
     fi
@@ -1727,7 +1727,7 @@ remove_module()
     if ! find $dkms_tree/"$module/$module_version"/* -maxdepth 0 -type d 2>/dev/null | grep -Eqv "(build|tarball|driver_disk|rpm|deb|source)$"; then
         echo ""
         echo "Deleting module $module-$module_version completely from the DKMS tree."
-        rm -rf "$dkms_tree/$module/$module_version"
+        rm -rf "${dkms_tree:?}/$module/$module_version"
     fi
 
     # Get rid of any remnant directories if necessary
@@ -1994,7 +1994,7 @@ make_tarball()
 
     [[ -w $tarball_dest ]] || die 9 "Missing write permissions for $tarball_dest."
 
-    if ! tar -C $temp_dir_name -caf $tarball_dest/$tarball_name . 2>/dev/null; then
+    if ! tar -C "$temp_dir_name" -caf "$tarball_dest/$tarball_name" . 2>/dev/null; then
         die 6 "Failed to make tarball."
     fi
 }
