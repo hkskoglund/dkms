@@ -85,34 +85,30 @@ invoke_command()
     # $3 = Redirect command output to this file
     # $4 = 'background' if you want to run the command asynchronously.
     local exitval=0
-    local -r cmd=$([[ $3 ]] && echo "{ $1; } >> $3 2>&1" || echo "$1")
+    local cmd
+    
+    if [[ $3 ]]; then
+        cmd="{ $1; } >> $3 2>&1"
+    else
+        cmd="$1"
+    fi
 
     [[ $verbose ]] && echo -e "$cmd" || echo -en "$2..."
     if [[ $4 = background && ! $verbose ]]; then
-        local pid progresspid
-        (eval "$cmd" >/dev/null 2>&1) & pid=$!
-        {
-            # shellcheck disable=SC2317 disable=SC2046
-            on_exit() {
-                kill $(jobs -p) 2>/dev/null
-                wait $(jobs -p) 2>/dev/null
-            }
-            trap on_exit EXIT
-            while /bin/kill --signal 0 $pid > /dev/null 2>&1; do
-                sleep 3 &
-                wait $!
-                case $package_name in
-                  dkms*_test) : # ignore . printing for test packages -> will intefere with expected 3 ... for run_test.sh if command takes longer than 3 seconds in the background 
-                                ;;
-                  *)            echo -en "." 
-                                ;;
-                esac
-            done
-        } & progresspid=$!
-        wait $pid 2>/dev/null
-        exitval=$?
-        kill $progresspid 2>/dev/null
-        wait $progresspid 2>/dev/null
+        local pid
+        local tmp_exitcode_file
+        tmp_exitcode_file="$(mktemp --dry-run)"
+        ( eval "$cmd" >/dev/null 2>&1; echo "$?" >"$tmp_exitcode_file" ) &
+        pid=$!
+        
+        while /bin/kill --signal 0 $pid > /dev/null 2>&1; do
+            sleep 3 
+            [[ $package_name != dkms*_test ]] && printf "."
+        done
+       
+        read -r exitval < "$tmp_exitcode_file"
+        rm "$tmp_exitcode_file"
+       
     else
         eval "$cmd"; exitval=$?
     fi
@@ -123,7 +119,7 @@ invoke_command()
     else
         echo " done."
     fi
-    return $exitval
+    return "$exitval"
 }
 
 error() (
