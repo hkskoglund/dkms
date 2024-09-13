@@ -95,19 +95,19 @@ invoke_command()
 
     [[ $verbose ]] && echo -e "$cmd" || echo -en "$2..."
     if [[ $4 = background && ! $verbose ]]; then
-        local pid
-        local tmp_exitcode_file
-        tmp_exitcode_file="$(mktemp --dry-run)"
-        ( eval "$cmd" >/dev/null 2>&1; echo "$?" >"$tmp_exitcode_file" ) &
+        local pid progresspid
+        
+        ( eval "$cmd" >/dev/null 2>&1 ) &
         pid=$!
         
-        while /bin/kill --signal 0 $pid > /dev/null 2>&1; do
+        while : ; do
             sleep 3 
             [[ $package_name != dkms*_test ]] && printf "."
-        done
+        done &
+        progresspid=$!
        
-        read -r exitval < "$tmp_exitcode_file"
-        rm "$tmp_exitcode_file"
+        wait $pid
+        kill $progresspid >/dev/null 2>&1
        
     else
         eval "$cmd"; exitval=$?
