@@ -107,6 +107,7 @@ invoke_command()
         progresspid=$!
        
         wait $pid
+        exitval=$?
         kill $progresspid >/dev/null 2>&1
        
     else
