@@ -109,10 +109,14 @@ invoke_command()
         echo -en "$cmd_description..."
     fi
 
-    if [[ $cmd_background == background && ! $verbose &&  $package_name != dkms*_test  ]]; then
+    if [[ $cmd_background == background && ! $verbose ]]; then
 
-        while : ; do sleep 3; printf "."; done &
-        progresspid=$!
+        if [[ $package_name != dkms*_test ]]; then  
+
+            while : ; do sleep 3; printf "."; done &
+            progresspid=$!
+        
+        fi
         
         if [[ -z "$cmd_output" ]]; then 
             cmd="$cmd >/dev/null 2>&1"
